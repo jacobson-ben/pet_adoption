@@ -2,7 +2,10 @@
 
 from flask import Flask, request, redirect, render_template
 from models import db, connect_db, Pet
-from forms import AddPet
+from forms import AddPet, EditPet
+from env import USER_POSTGRES, PASSWORD_POSTGRES
+from secrets import API_KEY, SECRET
+import requests
 
 from flask_debugtoolbar import DebugToolbarExtension
 
@@ -10,6 +13,10 @@ app = Flask(__name__)
 
 app.config['SECRET_KEY'] = "secret"
 
+#on windows
+# app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{USER_POSTGRES}:{PASSWORD_POSTGRES}@127.0.0.1/adopt"
+
+#on mac
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql:///adopt"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = True
@@ -23,7 +30,6 @@ db.create_all()
 # app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 toolbar = DebugToolbarExtension(app)
-
 
 @app.route("/")
 def homepage():
@@ -53,3 +59,51 @@ def add_a_pet():
 
     else:
         return render_template("add_pet_form.html", form=form)
+
+@app.route("/<int:petid>", methods=["GET", "POST"])
+def edit_pet(petid):
+    """Homepage shows pets available for adoption"""
+    pet = Pet.query.get_or_404(petid)
+    form = EditPet(obj=pet)                                     
+
+    if form.validate_on_submit():
+        pet.photo_url = form.photo_url.data
+        pet.notes = form.notes.data
+        pet.available = form.available.data
+
+        db.session.commit()
+
+        return redirect("/")
+
+    else:
+        return render_template("profile_page.html", form=form, pet=pet)
+
+def getToken():
+
+    myTokenData = requests.post(
+            'https://api.petfinder.com/v2/oauth2/token',
+            data = {
+            "grant_type": 'client_credentials',
+            "client_id": API_KEY,
+            "client-secret": SECRET
+            }
+    )
+
+    return myTokenData.json()['access_token']
+
+def makeRequest():
+
+    token = getToken()
+
+    pet_returned = requests.get(
+        'https://api.petfinder.com/v2/animals',
+        headers = {
+            'Authorization': f'Bearer {token}'
+        }
+    )
+
+    print(pet_returned.json()['animals'][3])
+
+
+
+

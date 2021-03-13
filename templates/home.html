@@ -7,7 +7,7 @@ Pet Adoption
 
 {% for pet in pets %}
 <div>
-  {{pet.name}} <br>
+  <a href="/{{pet.id}}">{{pet.name}}</a> <br>
   <img src="{{pet.photo_url}}" alt="{{pet.name}}"> <br>
   {% if pet.available %}
     <b>Available</b>
